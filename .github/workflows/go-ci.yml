@@ -26,18 +26,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: ${{ hashFiles('go.sum') != '' }}
+          cache: true
 
       - name: Download deps
         run: go mod tidy
 
       - name: Verify go.mod/go.sum unchanged
         run: |
-          if [ -n "$(git status --porcelain -- go.mod go.sum)" ]; then
-            echo "go.mod/go.sum changed after go mod tidy"
-            git status --short -- go.mod go.sum
-            git diff -- go.mod go.sum || true
-            exit 1
+          if [ -f go.sum ]; then
+            git diff --exit-code go.mod go.sum
+          else
+            git diff --exit-code go.mod
           fi
 
       - name: Check formatting
@@ -53,20 +52,20 @@ jobs:
         run: go vet ./...
 
       - name: Setup Python (for prek)
-        if: ${{ hashFiles('prek.toml') != '' }}
+        if: ${{ hashFiles('prek.toml') != '' || hashFiles('.pre-commit-config.yaml') != '' || hashFiles('.pre-commit-config.yml') != '' }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: '3.x'
 
       - name: Install prek
-        if: ${{ hashFiles('prek.toml') != '' }}
+        if: ${{ hashFiles('prek.toml') != '' || hashFiles('.pre-commit-config.yaml') != '' || hashFiles('.pre-commit-config.yml') != '' }}
         run: |
           python -m pip install --upgrade pip
           python -m pip install prek
           prek --version
 
       - name: Pre-commit checks (prek)
-        if: ${{ hashFiles('prek.toml') != '' }}
+        if: ${{ hashFiles('prek.toml') != '' || hashFiles('.pre-commit-config.yaml') != '' || hashFiles('.pre-commit-config.yml') != '' }}
         run: |
           prek validate-config
           prek run --all-files

@@ -3,7 +3,7 @@ name: Release on Tag
 on:
   push:
     tags:
-      - "v*"
+      - "v*" # keep in sync with TAG_PREFIX in release-naming.env
   workflow_dispatch:
     inputs:
       tag:
@@ -31,13 +31,13 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: ${{ hashFiles('go.sum') != '' }}
+          cache: true
 
       - name: Setup Python (for prek)
         if: ${{ hashFiles('prek.toml') != '' }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: '3.x'
 
       - name: Install prek
         if: ${{ hashFiles('prek.toml') != '' }}
@@ -81,6 +81,7 @@ jobs:
           source release-naming.env
           current_tag="${RELEASE_TAG}"
           previous_tag=$(git tag -l "${TAG_PREFIX}*" --sort=-version:refname | grep -v "^${current_tag}$" | head -n 1 || true)
+
           {
             echo "# Changelog"
             echo

@@ -186,7 +186,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'release-on-tag.yml',
-              ref: context.payload.repository.default_branch,
+              ref: 'main',
               inputs: {
                 tag: '${{ steps.version.outputs.tag }}'
               }
