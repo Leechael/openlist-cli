@@ -1,0 +1,84 @@
+Admin - Driver	adminGetDriverInfo	GET	/api/admin/driver/info	Get driver info by name	no
+Admin - Driver	adminListDriverInfo	GET	/api/admin/driver/list	List all driver configs	no
+Admin - Driver	adminListDriverNames	GET	/api/admin/driver/names	List driver names	no
+Admin - Index	adminBuildIndex	POST	/api/admin/index/build	Build search index	yes
+Admin - Index	adminClearIndex	POST	/api/admin/index/clear	Clear search index	no
+Admin - Index	adminGetIndexProgress	GET	/api/admin/index/progress	Get index build progress	no
+Admin - Index	adminStopIndex	POST	/api/admin/index/stop	Stop index building	no
+Admin - Index	adminUpdateIndex	POST	/api/admin/index/update	Update search index	yes
+Admin - Meta	adminCreateMeta	POST	/api/admin/meta/create	Create path metadata	yes
+Admin - Meta	adminDeleteMeta	POST	/api/admin/meta/delete	Delete path metadata	no
+Admin - Meta	adminGetMeta	GET	/api/admin/meta/get	Get metadata by ID	no
+Admin - Meta	adminListMetas	GET	/api/admin/meta/list	List all path metadata	no
+Admin - Meta	adminUpdateMeta	POST	/api/admin/meta/update	Update path metadata	yes
+Admin - Offline Download	adminSetAria2	POST	/api/admin/setting/set_aria2	Configure Aria2	yes
+Admin - Offline Download	adminSetQbittorrent	POST	/api/admin/setting/set_qbit	Configure qBittorrent	yes
+Admin - Offline Download	adminSetTransmission	POST	/api/admin/setting/set_transmission	Configure Transmission	yes
+Admin - Scan	adminGetScanProgress	GET	/api/admin/scan/progress	Get scan progress	no
+Admin - Scan	adminStartScan	POST	/api/admin/scan/start	Start manual file scan	no
+Admin - Scan	adminStopScan	POST	/api/admin/scan/stop	Stop manual scan	no
+Admin - Setting	adminDefaultSettings	POST	/api/admin/setting/default	Reset settings to defaults	no
+Admin - Setting	adminDeleteSetting	POST	/api/admin/setting/delete	Delete setting	no
+Admin - Setting	adminGetSetting	GET	/api/admin/setting/get	Get setting by key(s)	no
+Admin - Setting	adminListSettings	GET	/api/admin/setting/list	List settings by group	no
+Admin - Setting	adminResetToken	POST	/api/admin/setting/reset_token	Reset admin token	no
+Admin - Setting	adminSaveSettings	POST	/api/admin/setting/save	Save settings	yes
+Admin - Storage	adminCreateStorage	POST	/api/admin/storage/create	Create storage	yes
+Admin - Storage	adminDeleteStorage	POST	/api/admin/storage/delete	Delete storage	no
+Admin - Storage	adminDisableStorage	POST	/api/admin/storage/disable	Disable storage	no
+Admin - Storage	adminEnableStorage	POST	/api/admin/storage/enable	Enable storage	no
+Admin - Storage	adminGetStorage	GET	/api/admin/storage/get	Get storage by ID	no
+Admin - Storage	adminListStorages	GET	/api/admin/storage/list	List all storages	no
+Admin - Storage	adminLoadAllStorages	POST	/api/admin/storage/load_all	Reload all storages	no
+Admin - Storage	adminUpdateStorage	POST	/api/admin/storage/update	Update storage	yes
+Admin - User	adminCancel2FA	POST	/api/admin/user/cancel_2fa	Cancel 2FA for user	no
+Admin - User	adminCreateUser	POST	/api/admin/user/create	Create user	yes
+Admin - User	adminDelUserCache	POST	/api/admin/user/del_cache	Delete user cache	no
+Admin - User	adminDeleteUser	POST	/api/admin/user/delete	Delete user	no
+Admin - User	adminGetUser	GET	/api/admin/user/get	Get user by ID	no
+Admin - User	adminListUsers	GET	/api/admin/user/list	List all users	no
+Admin - User	adminUpdateUser	POST	/api/admin/user/update	Update user	yes
+Archive	fsArchiveDecompress	POST	/api/fs/archive/decompress	Decompress archive to target directory	yes
+Archive	fsArchiveList	POST	/api/fs/archive/list	List archive contents with pagination	yes
+Archive	fsArchiveMeta	POST	/api/fs/archive/meta	Get archive file metadata	yes
+Auth	currentUser	GET	/api/me	Get current user info	no
+Auth	generate2FA	POST	/api/auth/2fa/generate	Generate 2FA QR code	no
+Auth	login	POST	/api/auth/login	Login (deprecated, hashes password client-side)	yes
+Auth	loginHash	POST	/api/auth/login/hash	Login with SHA256-hashed password	yes
+Auth	loginLdap	POST	/api/auth/login/ldap	LDAP login	yes
+Auth	logout	GET	/api/auth/logout	Logout (invalidates token)	no
+Auth	updateCurrentUser	POST	/api/me/update	Update current user profile	yes
+Auth	verify2FA	POST	/api/auth/2fa/verify	Verify and enable 2FA	yes
+FileSystem	addOfflineDownload	POST	/api/fs/add_offline_download	Add offline download task	yes
+FileSystem	fsBatchRename	POST	/api/fs/batch_rename	Batch rename files	yes
+FileSystem	fsCopy	POST	/api/fs/copy	Copy files	yes
+FileSystem	fsDirs	POST	/api/fs/dirs	List only directories	yes
+FileSystem	fsFormUpload	PUT	/api/fs/form	Form-based file upload	yes
+FileSystem	fsGet	POST	/api/fs/get	Get file/directory details with raw_url	yes
+FileSystem	fsGetDirectUploadInfo	POST	/api/fs/get_direct_upload_info	Get direct upload info for client-side upload	yes
+FileSystem	fsLink	POST	/api/fs/link	Generate download link (admin only)	yes
+FileSystem	fsList	POST	/api/fs/list	List directory contents	yes
+FileSystem	fsMkdir	POST	/api/fs/mkdir	Create directory	yes
+FileSystem	fsMove	POST	/api/fs/move	Move files	yes
+FileSystem	fsOther	POST	/api/fs/other	Get additional file info (driver-specific)	yes
+FileSystem	fsRecursiveMove	POST	/api/fs/recursive_move	Recursively move directory contents	yes
+FileSystem	fsRegexRename	POST	/api/fs/regex_rename	Rename files using regex	yes
+FileSystem	fsRemove	POST	/api/fs/remove	Delete files or directories	yes
+FileSystem	fsRemoveEmptyDirectory	POST	/api/fs/remove_empty_directory	Remove empty directories recursively	yes
+FileSystem	fsRename	POST	/api/fs/rename	Rename file or directory	yes
+FileSystem	fsSearch	POST	/api/fs/search	Search files (requires search index)	yes
+FileSystem	fsStreamUpload	PUT	/api/fs/put	Stream upload file	yes
+Public	archiveExtensions	GET	/api/public/archive_extensions	List supported archive extensions	no
+Public	offlineDownloadTools	GET	/api/public/offline_download_tools	List available offline download tools	no
+Public	ping	GET	/ping	Health check	no
+Public	publicSettings	GET	/api/public/settings	Get public settings	no
+SSHKey	addMySSHKey	POST	/api/me/sshkey/add	Add SSH public key	yes
+SSHKey	deleteMySSHKey	POST	/api/me/sshkey/delete	Delete SSH public key	no
+SSHKey	listMySSHKeys	GET	/api/me/sshkey/list	List my SSH public keys	no
+Sharing	createSharing	POST	/api/share/create	Create a new share	yes
+Sharing	deleteSharing	POST	/api/share/delete	Delete a share	no
+Sharing	disableSharing	POST	/api/share/disable	Disable a share	no
+Sharing	enableSharing	POST	/api/share/enable	Enable a share	no
+Sharing	getSharing	GET	/api/share/get	Get share details	no
+Sharing	listSharings	POST	/api/share/list	List user's shares	yes
+Sharing	updateSharing	POST	/api/share/update	Update share settings	yes

@@ -1,0 +1,2486 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OpenList API",
+    "description": "OpenList (AList fork) file management API. All JSON API endpoints return a standard wrapper: {code, message, data}.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5244",
+      "description": "Default local server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "JWT token obtained from /api/auth/login/hash"
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer" },
+          "message": { "type": "string" },
+          "data": {}
+        },
+        "required": ["code", "message"]
+      },
+      "PageReq": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "default": 1 },
+          "per_page": { "type": "integer", "default": 0, "description": "0 means all" }
+        }
+      },
+      "Sort": {
+        "type": "object",
+        "properties": {
+          "order_by": { "type": "string" },
+          "order_direction": { "type": "string", "enum": ["asc", "desc"] },
+          "extract_folder": { "type": "string" }
+        }
+      },
+      "HashInfo": {
+        "type": "object",
+        "properties": {
+          "sha1": { "type": "string" },
+          "md5": { "type": "string" },
+          "sha256": { "type": "string" }
+        }
+      },
+      "ObjResp": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "size": { "type": "integer", "format": "int64" },
+          "is_dir": { "type": "boolean" },
+          "modified": { "type": "string", "format": "date-time" },
+          "created": { "type": "string", "format": "date-time" },
+          "sign": { "type": "string", "description": "Signature for download URL construction" },
+          "thumb": { "type": "string", "description": "Thumbnail URL" },
+          "type": { "type": "integer", "description": "File type enum" },
+          "hashinfo": { "type": "string", "description": "JSON string of hash info" },
+          "hash_info": { "$ref": "#/components/schemas/HashInfo" }
+        }
+      },
+      "FsListReq": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" },
+          "password": { "type": "string", "default": "" },
+          "page": { "type": "integer", "default": 1 },
+          "per_page": { "type": "integer", "default": 0 },
+          "refresh": { "type": "boolean", "default": false }
+        }
+      },
+      "FsListResp": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ObjResp" },
+            "nullable": true
+          },
+          "total": { "type": "integer", "format": "int64" },
+          "readme": { "type": "string" },
+          "header": { "type": "string" },
+          "write": { "type": "boolean" },
+          "provider": { "type": "string" },
+          "direct_upload_tools": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "FsGetReq": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" },
+          "password": { "type": "string", "default": "" }
+        }
+      },
+      "FsGetResp": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ObjResp" },
+          {
+            "type": "object",
+            "properties": {
+              "raw_url": { "type": "string", "description": "Direct download URL from storage provider" },
+              "readme": { "type": "string" },
+              "header": { "type": "string" },
+              "provider": { "type": "string" },
+              "related": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ObjResp" }
+              }
+            }
+          }
+        ]
+      },
+      "DirReq": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" },
+          "password": { "type": "string", "default": "" },
+          "force_root": { "type": "boolean", "default": false }
+        }
+      },
+      "DirResp": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "modified": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SearchReq": {
+        "type": "object",
+        "required": ["parent", "keywords"],
+        "properties": {
+          "parent": { "type": "string" },
+          "keywords": { "type": "string" },
+          "scope": { "type": "integer", "description": "0=all, 1=folders, 2=files" },
+          "page": { "type": "integer", "default": 1 },
+          "per_page": { "type": "integer", "default": 0 },
+          "password": { "type": "string" }
+        }
+      },
+      "SearchNode": {
+        "type": "object",
+        "properties": {
+          "parent": { "type": "string" },
+          "name": { "type": "string" },
+          "is_dir": { "type": "boolean" },
+          "size": { "type": "integer", "format": "int64" },
+          "type": { "type": "integer" }
+        }
+      },
+      "FsOtherReq": {
+        "type": "object",
+        "required": ["path", "method"],
+        "properties": {
+          "path": { "type": "string" },
+          "method": { "type": "string" },
+          "data": {},
+          "password": { "type": "string" }
+        }
+      },
+      "MkdirReq": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" }
+        }
+      },
+      "RenameReq": {
+        "type": "object",
+        "required": ["path", "name"],
+        "properties": {
+          "path": { "type": "string" },
+          "name": { "type": "string" },
+          "overwrite": { "type": "boolean", "default": false }
+        }
+      },
+      "BatchRenameReq": {
+        "type": "object",
+        "required": ["src_dir", "rename_objects"],
+        "properties": {
+          "src_dir": { "type": "string" },
+          "rename_objects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "src_name": { "type": "string" },
+                "new_name": { "type": "string" }
+              },
+              "required": ["src_name", "new_name"]
+            }
+          }
+        }
+      },
+      "RegexRenameReq": {
+        "type": "object",
+        "required": ["src_dir", "src_name_regex", "new_name_regex"],
+        "properties": {
+          "src_dir": { "type": "string" },
+          "src_name_regex": { "type": "string" },
+          "new_name_regex": { "type": "string" }
+        }
+      },
+      "MoveCopyReq": {
+        "type": "object",
+        "required": ["src_dir", "dst_dir", "names"],
+        "properties": {
+          "src_dir": { "type": "string" },
+          "dst_dir": { "type": "string" },
+          "names": { "type": "array", "items": { "type": "string" } },
+          "overwrite": { "type": "boolean", "default": false },
+          "skip_existing": { "type": "boolean", "default": false },
+          "merge": { "type": "boolean", "default": false }
+        }
+      },
+      "RecursiveMoveReq": {
+        "type": "object",
+        "required": ["src_dir", "dst_dir"],
+        "properties": {
+          "src_dir": { "type": "string" },
+          "dst_dir": { "type": "string" },
+          "conflict_policy": { "type": "string" }
+        }
+      },
+      "RemoveReq": {
+        "type": "object",
+        "required": ["dir", "names"],
+        "properties": {
+          "dir": { "type": "string" },
+          "names": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "RemoveEmptyDirectoryReq": {
+        "type": "object",
+        "required": ["src_dir"],
+        "properties": {
+          "src_dir": { "type": "string" }
+        }
+      },
+      "LinkReq": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" }
+        }
+      },
+      "LinkResp": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "header": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "concurrency": { "type": "integer" },
+          "part_size": { "type": "integer" },
+          "content_length": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ArchiveMetaReq": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" },
+          "password": { "type": "string" },
+          "refresh": { "type": "boolean" },
+          "archive_pass": { "type": "string", "description": "Password for the archive file itself" }
+        }
+      },
+      "ArchiveContentResp": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ObjResp" },
+          {
+            "type": "object",
+            "properties": {
+              "children": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ArchiveContentResp" }
+              }
+            }
+          }
+        ]
+      },
+      "ArchiveMetaResp": {
+        "type": "object",
+        "properties": {
+          "comment": { "type": "string" },
+          "encrypted": { "type": "boolean" },
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ArchiveContentResp" }
+          },
+          "sort": { "$ref": "#/components/schemas/Sort" },
+          "raw_url": { "type": "string" },
+          "sign": { "type": "string" }
+        }
+      },
+      "ArchiveListReq": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" },
+          "password": { "type": "string" },
+          "refresh": { "type": "boolean" },
+          "archive_pass": { "type": "string" },
+          "inner_path": { "type": "string" },
+          "page": { "type": "integer" },
+          "per_page": { "type": "integer" }
+        }
+      },
+      "ArchiveDecompressReq": {
+        "type": "object",
+        "required": ["src_dir", "dst_dir", "name"],
+        "properties": {
+          "src_dir": { "type": "string" },
+          "dst_dir": { "type": "string" },
+          "name": { "type": "array", "items": { "type": "string" } },
+          "archive_pass": { "type": "string" },
+          "inner_path": { "type": "string" },
+          "cache_full": { "type": "boolean" },
+          "put_into_new_dir": { "type": "boolean" },
+          "overwrite": { "type": "boolean" }
+        }
+      },
+      "AddOfflineDownloadReq": {
+        "type": "object",
+        "required": ["urls", "path", "tool"],
+        "properties": {
+          "urls": { "type": "array", "items": { "type": "string" } },
+          "path": { "type": "string" },
+          "tool": { "type": "string" },
+          "delete_policy": { "type": "string" }
+        }
+      },
+      "LoginReq": {
+        "type": "object",
+        "required": ["username"],
+        "properties": {
+          "username": { "type": "string" },
+          "password": { "type": "string", "description": "Plain text for /login, SHA256 hash for /login/hash" },
+          "otp_code": { "type": "string" }
+        }
+      },
+      "LoginResp": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "username": { "type": "string" },
+          "password": { "type": "string" },
+          "base_path": { "type": "string" },
+          "role": { "type": "integer", "description": "0=admin, 1=general, 2=guest" },
+          "disabled": { "type": "boolean" },
+          "permission": { "type": "integer", "format": "int32" },
+          "sso_id": { "type": "string" },
+          "allow_ldap": { "type": "boolean" }
+        }
+      },
+      "UserResp": {
+        "allOf": [
+          { "$ref": "#/components/schemas/User" },
+          {
+            "type": "object",
+            "properties": {
+              "otp": { "type": "boolean" }
+            }
+          }
+        ]
+      },
+      "Verify2FAReq": {
+        "type": "object",
+        "required": ["code", "secret"],
+        "properties": {
+          "code": { "type": "string" },
+          "secret": { "type": "string" }
+        }
+      },
+      "Storage": {
+        "type": "object",
+        "required": ["mount_path"],
+        "properties": {
+          "id": { "type": "integer" },
+          "mount_path": { "type": "string" },
+          "order": { "type": "integer" },
+          "driver": { "type": "string" },
+          "cache_expiration": { "type": "integer" },
+          "custom_cache_policies": { "type": "string" },
+          "status": { "type": "string" },
+          "addition": { "type": "string", "description": "Driver-specific config as JSON string" },
+          "remark": { "type": "string" },
+          "modified": { "type": "string", "format": "date-time" },
+          "disabled": { "type": "boolean" },
+          "disable_index": { "type": "boolean" },
+          "enable_sign": { "type": "boolean" },
+          "order_by": { "type": "string" },
+          "order_direction": { "type": "string" },
+          "extract_folder": { "type": "string" },
+          "web_proxy": { "type": "boolean" },
+          "webdav_policy": { "type": "string" },
+          "proxy_range": { "type": "boolean" },
+          "down_proxy_url": { "type": "string" },
+          "disable_proxy_sign": { "type": "boolean" }
+        }
+      },
+      "Meta": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "id": { "type": "integer" },
+          "path": { "type": "string" },
+          "password": { "type": "string" },
+          "p_sub": { "type": "boolean" },
+          "write": { "type": "boolean" },
+          "w_sub": { "type": "boolean" },
+          "hide": { "type": "string" },
+          "h_sub": { "type": "boolean" },
+          "readme": { "type": "string" },
+          "r_sub": { "type": "boolean" },
+          "header": { "type": "string" },
+          "header_sub": { "type": "boolean" }
+        }
+      },
+      "Sharing": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "files": { "type": "array", "items": { "type": "string" } },
+          "expires": { "type": "string", "format": "date-time", "nullable": true },
+          "pwd": { "type": "string" },
+          "accessed": { "type": "integer" },
+          "max_accessed": { "type": "integer" },
+          "disabled": { "type": "boolean" },
+          "remark": { "type": "string" },
+          "readme": { "type": "string" },
+          "header": { "type": "string" },
+          "order_by": { "type": "string" },
+          "order_direction": { "type": "string" },
+          "extract_folder": { "type": "string" }
+        }
+      },
+      "SharingResp": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Sharing" },
+          {
+            "type": "object",
+            "properties": {
+              "creator": { "type": "string" },
+              "creator_role": { "type": "integer" }
+            }
+          }
+        ]
+      },
+      "UpdateSharingReq": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "files": { "type": "array", "items": { "type": "string" } },
+          "expires": { "type": "string", "format": "date-time", "nullable": true },
+          "pwd": { "type": "string" },
+          "max_accessed": { "type": "integer" },
+          "disabled": { "type": "boolean" },
+          "remark": { "type": "string" },
+          "readme": { "type": "string" },
+          "header": { "type": "string" },
+          "creator": { "type": "string" },
+          "accessed": { "type": "integer" },
+          "order_by": { "type": "string" },
+          "order_direction": { "type": "string" },
+          "extract_folder": { "type": "string" }
+        }
+      },
+      "SettingItem": {
+        "type": "object",
+        "required": ["key"],
+        "properties": {
+          "key": { "type": "string" },
+          "value": { "type": "string" },
+          "help": { "type": "string" },
+          "type": { "type": "string" },
+          "options": { "type": "string" },
+          "group": { "type": "integer" },
+          "flag": { "type": "integer" },
+          "index": { "type": "integer" }
+        }
+      },
+      "TaskInfo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "creator": { "type": "string" },
+          "creator_role": { "type": "integer" },
+          "state": { "type": "integer", "description": "Task state enum" },
+          "status": { "type": "string" },
+          "progress": { "type": "number", "format": "double" },
+          "start_time": { "type": "string", "format": "date-time", "nullable": true },
+          "end_time": { "type": "string", "format": "date-time", "nullable": true },
+          "total_bytes": { "type": "integer", "format": "int64" },
+          "error": { "type": "string" }
+        }
+      },
+      "SSHKeyAddReq": {
+        "type": "object",
+        "required": ["title", "key"],
+        "properties": {
+          "title": { "type": "string" },
+          "key": { "type": "string" }
+        }
+      },
+      "SetAria2Req": {
+        "type": "object",
+        "properties": {
+          "uri": { "type": "string" },
+          "secret": { "type": "string" }
+        }
+      },
+      "SetQbittorrentReq": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "seedtime": { "type": "string" }
+        }
+      },
+      "SetTransmissionReq": {
+        "type": "object",
+        "properties": {
+          "uri": { "type": "string" },
+          "seedtime": { "type": "string" }
+        }
+      },
+      "SetTempDirReq": {
+        "type": "object",
+        "properties": {
+          "temp_dir": { "type": "string" }
+        }
+      },
+      "Set123OpenReq": {
+        "type": "object",
+        "properties": {
+          "temp_dir": { "type": "string" },
+          "callback_url": { "type": "string" }
+        }
+      },
+      "UpdateIndexReq": {
+        "type": "object",
+        "properties": {
+          "paths": { "type": "array", "items": { "type": "string" } },
+          "max_depth": { "type": "integer" }
+        }
+      },
+      "PageResp": {
+        "type": "object",
+        "properties": {
+          "content": {},
+          "total": { "type": "integer", "format": "int64" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login (deprecated, hashes password client-side)",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/LoginResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login/hash": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login with SHA256-hashed password",
+        "operationId": "loginHash",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/LoginResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login/ldap": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "LDAP login",
+        "operationId": "loginLdap",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/LoginResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Logout (invalidates token)",
+        "operationId": "logout",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get current user info",
+        "operationId": "currentUser",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/update": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Update current user profile",
+        "operationId": "updateCurrentUser",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/User" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/generate": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Generate 2FA QR code",
+        "operationId": "generate2FA",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "qr": { "type": "string" },
+                            "secret": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/verify": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Verify and enable 2FA",
+        "operationId": "verify2FA",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Verify2FAReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/settings": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Get public settings",
+        "operationId": "publicSettings",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "additionalProperties": { "type": "string" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/offline_download_tools": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "List available offline download tools",
+        "operationId": "offlineDownloadTools",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "string" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/archive_extensions": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "List supported archive extensions",
+        "operationId": "archiveExtensions",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "string" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/list": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "List directory contents",
+        "operationId": "fsList",
+        "security": [{ "BearerAuth": [] }, {}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FsListReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/FsListResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/get": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Get file/directory details with raw_url",
+        "operationId": "fsGet",
+        "security": [{ "BearerAuth": [] }, {}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FsGetReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/FsGetResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/dirs": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "List only directories",
+        "operationId": "fsDirs",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DirReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "content": { "type": "array", "items": { "$ref": "#/components/schemas/DirResp" } },
+                            "total": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/search": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Search files (requires search index)",
+        "operationId": "fsSearch",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SearchReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "content": { "type": "array", "items": { "$ref": "#/components/schemas/SearchNode" } },
+                            "total": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/other": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Get additional file info (driver-specific)",
+        "operationId": "fsOther",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FsOtherReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/mkdir": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Create directory",
+        "operationId": "fsMkdir",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MkdirReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/rename": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Rename file or directory",
+        "operationId": "fsRename",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RenameReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/batch_rename": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Batch rename files",
+        "operationId": "fsBatchRename",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BatchRenameReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/regex_rename": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Rename files using regex",
+        "operationId": "fsRegexRename",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegexRenameReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/move": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Move files",
+        "operationId": "fsMove",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MoveCopyReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/recursive_move": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Recursively move directory contents",
+        "operationId": "fsRecursiveMove",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RecursiveMoveReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/copy": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Copy files",
+        "operationId": "fsCopy",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MoveCopyReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/remove": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Delete files or directories",
+        "operationId": "fsRemove",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RemoveReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/remove_empty_directory": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Remove empty directories recursively",
+        "operationId": "fsRemoveEmptyDirectory",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RemoveEmptyDirectoryReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/put": {
+      "put": {
+        "tags": ["FileSystem"],
+        "summary": "Stream upload file",
+        "operationId": "fsStreamUpload",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "File-Path", "in": "header", "required": true, "schema": { "type": "string" }, "description": "URL-encoded target path including filename" },
+          { "name": "As-Task", "in": "header", "schema": { "type": "boolean" }, "description": "Run as async task" },
+          { "name": "Overwrite", "in": "header", "schema": { "type": "boolean" } },
+          { "name": "Last-Modified", "in": "header", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "X-File-Md5", "in": "header", "schema": { "type": "string" } },
+          { "name": "X-File-Sha1", "in": "header", "schema": { "type": "string" } },
+          { "name": "X-File-Sha256", "in": "header", "schema": { "type": "string" } },
+          { "name": "Content-Length", "in": "header", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": { "type": "string", "format": "binary" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/form": {
+      "put": {
+        "tags": ["FileSystem"],
+        "summary": "Form-based file upload",
+        "operationId": "fsFormUpload",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "File-Path", "in": "header", "required": true, "schema": { "type": "string" }, "description": "URL-encoded target path including filename" },
+          { "name": "As-Task", "in": "header", "schema": { "type": "boolean" } },
+          { "name": "Overwrite", "in": "header", "schema": { "type": "boolean" } },
+          { "name": "Last-Modified", "in": "header", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "X-File-Md5", "in": "header", "schema": { "type": "string" } },
+          { "name": "X-File-Sha1", "in": "header", "schema": { "type": "string" } },
+          { "name": "X-File-Sha256", "in": "header", "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/link": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Generate download link (admin only)",
+        "operationId": "fsLink",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LinkReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/LinkResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/add_offline_download": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Add offline download task",
+        "operationId": "addOfflineDownload",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AddOfflineDownloadReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/TaskInfo" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/get_direct_upload_info": {
+      "post": {
+        "tags": ["FileSystem"],
+        "summary": "Get direct upload info for client-side upload",
+        "operationId": "fsGetDirectUploadInfo",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MkdirReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/archive/meta": {
+      "post": {
+        "tags": ["Archive"],
+        "summary": "Get archive file metadata",
+        "operationId": "fsArchiveMeta",
+        "security": [{ "BearerAuth": [] }, {}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ArchiveMetaReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ArchiveMetaResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/archive/list": {
+      "post": {
+        "tags": ["Archive"],
+        "summary": "List archive contents with pagination",
+        "operationId": "fsArchiveList",
+        "security": [{ "BearerAuth": [] }, {}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ArchiveListReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fs/archive/decompress": {
+      "post": {
+        "tags": ["Archive"],
+        "summary": "Decompress archive to target directory",
+        "operationId": "fsArchiveDecompress",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ArchiveDecompressReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/share/list": {
+      "post": {
+        "tags": ["Sharing"],
+        "summary": "List user's shares",
+        "operationId": "listSharings",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PageReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "content": { "type": "array", "items": { "$ref": "#/components/schemas/SharingResp" } },
+                            "total": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/share/get": {
+      "get": {
+        "tags": ["Sharing"],
+        "summary": "Get share details",
+        "operationId": "getSharing",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/SharingResp" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/share/create": {
+      "post": {
+        "tags": ["Sharing"],
+        "summary": "Create a new share",
+        "operationId": "createSharing",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSharingReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/share/update": {
+      "post": {
+        "tags": ["Sharing"],
+        "summary": "Update share settings",
+        "operationId": "updateSharing",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSharingReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/share/delete": {
+      "post": {
+        "tags": ["Sharing"],
+        "summary": "Delete a share",
+        "operationId": "deleteSharing",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/share/enable": {
+      "post": {
+        "tags": ["Sharing"],
+        "summary": "Enable a share",
+        "operationId": "enableSharing",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/share/disable": {
+      "post": {
+        "tags": ["Sharing"],
+        "summary": "Disable a share",
+        "operationId": "disableSharing",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/sshkey/list": {
+      "get": {
+        "tags": ["SSHKey"],
+        "summary": "List my SSH public keys",
+        "operationId": "listMySSHKeys",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/sshkey/add": {
+      "post": {
+        "tags": ["SSHKey"],
+        "summary": "Add SSH public key",
+        "operationId": "addMySSHKey",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SSHKeyAddReq" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/sshkey/delete": {
+      "post": {
+        "tags": ["SSHKey"],
+        "summary": "Delete SSH public key",
+        "operationId": "deleteMySSHKey",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/user/list": {
+      "get": {
+        "tags": ["Admin - User"],
+        "summary": "List all users",
+        "operationId": "adminListUsers",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "content": { "type": "array", "items": { "$ref": "#/components/schemas/User" } },
+                            "total": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/user/get": {
+      "get": {
+        "tags": ["Admin - User"],
+        "summary": "Get user by ID",
+        "operationId": "adminGetUser",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/User" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/user/create": {
+      "post": {
+        "tags": ["Admin - User"],
+        "summary": "Create user",
+        "operationId": "adminCreateUser",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+        },
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/user/update": {
+      "post": {
+        "tags": ["Admin - User"],
+        "summary": "Update user",
+        "operationId": "adminUpdateUser",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+        },
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/user/delete": {
+      "post": {
+        "tags": ["Admin - User"],
+        "summary": "Delete user",
+        "operationId": "adminDeleteUser",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/user/cancel_2fa": {
+      "post": {
+        "tags": ["Admin - User"],
+        "summary": "Cancel 2FA for user",
+        "operationId": "adminCancel2FA",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/user/del_cache": {
+      "post": {
+        "tags": ["Admin - User"],
+        "summary": "Delete user cache",
+        "operationId": "adminDelUserCache",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "username", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/storage/list": {
+      "get": {
+        "tags": ["Admin - Storage"],
+        "summary": "List all storages",
+        "operationId": "adminListStorages",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "content": { "type": "array", "items": { "$ref": "#/components/schemas/Storage" } },
+                            "total": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/storage/get": {
+      "get": {
+        "tags": ["Admin - Storage"],
+        "summary": "Get storage by ID",
+        "operationId": "adminGetStorage",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Storage" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/storage/create": {
+      "post": {
+        "tags": ["Admin - Storage"],
+        "summary": "Create storage",
+        "operationId": "adminCreateStorage",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Storage" } } }
+        },
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/storage/update": {
+      "post": {
+        "tags": ["Admin - Storage"],
+        "summary": "Update storage",
+        "operationId": "adminUpdateStorage",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Storage" } } }
+        },
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/storage/delete": {
+      "post": {
+        "tags": ["Admin - Storage"],
+        "summary": "Delete storage",
+        "operationId": "adminDeleteStorage",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/storage/enable": {
+      "post": {
+        "tags": ["Admin - Storage"],
+        "summary": "Enable storage",
+        "operationId": "adminEnableStorage",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/storage/disable": {
+      "post": {
+        "tags": ["Admin - Storage"],
+        "summary": "Disable storage",
+        "operationId": "adminDisableStorage",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/storage/load_all": {
+      "post": {
+        "tags": ["Admin - Storage"],
+        "summary": "Reload all storages",
+        "operationId": "adminLoadAllStorages",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/meta/list": {
+      "get": {
+        "tags": ["Admin - Meta"],
+        "summary": "List all path metadata",
+        "operationId": "adminListMetas",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "content": { "type": "array", "items": { "$ref": "#/components/schemas/Meta" } },
+                            "total": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/meta/get": {
+      "get": {
+        "tags": ["Admin - Meta"],
+        "summary": "Get metadata by ID",
+        "operationId": "adminGetMeta",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Meta" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/meta/create": {
+      "post": {
+        "tags": ["Admin - Meta"],
+        "summary": "Create path metadata",
+        "operationId": "adminCreateMeta",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Meta" } } }
+        },
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/meta/update": {
+      "post": {
+        "tags": ["Admin - Meta"],
+        "summary": "Update path metadata",
+        "operationId": "adminUpdateMeta",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Meta" } } }
+        },
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/meta/delete": {
+      "post": {
+        "tags": ["Admin - Meta"],
+        "summary": "Delete path metadata",
+        "operationId": "adminDeleteMeta",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/setting/get": {
+      "get": {
+        "tags": ["Admin - Setting"],
+        "summary": "Get setting by key(s)",
+        "operationId": "adminGetSetting",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "key", "in": "query", "schema": { "type": "string" } },
+          { "name": "keys", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "oneOf": [
+                            { "$ref": "#/components/schemas/SettingItem" },
+                            { "type": "array", "items": { "$ref": "#/components/schemas/SettingItem" } }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/setting/list": {
+      "get": {
+        "tags": ["Admin - Setting"],
+        "summary": "List settings by group",
+        "operationId": "adminListSettings",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "group", "in": "query", "schema": { "type": "integer" } },
+          { "name": "groups", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/SettingItem" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/setting/save": {
+      "post": {
+        "tags": ["Admin - Setting"],
+        "summary": "Save settings",
+        "operationId": "adminSaveSettings",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SettingItem" } }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/setting/delete": {
+      "post": {
+        "tags": ["Admin - Setting"],
+        "summary": "Delete setting",
+        "operationId": "adminDeleteSetting",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "key", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/setting/default": {
+      "post": {
+        "tags": ["Admin - Setting"],
+        "summary": "Reset settings to defaults",
+        "operationId": "adminDefaultSettings",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "group", "in": "query", "schema": { "type": "integer" } },
+          { "name": "groups", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/setting/reset_token": {
+      "post": {
+        "tags": ["Admin - Setting"],
+        "summary": "Reset admin token",
+        "operationId": "adminResetToken",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "type": "object", "properties": { "token": { "type": "string" } } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/setting/set_aria2": {
+      "post": {
+        "tags": ["Admin - Offline Download"],
+        "summary": "Configure Aria2",
+        "operationId": "adminSetAria2",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetAria2Req" } } } },
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/setting/set_qbit": {
+      "post": {
+        "tags": ["Admin - Offline Download"],
+        "summary": "Configure qBittorrent",
+        "operationId": "adminSetQbittorrent",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetQbittorrentReq" } } } },
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/setting/set_transmission": {
+      "post": {
+        "tags": ["Admin - Offline Download"],
+        "summary": "Configure Transmission",
+        "operationId": "adminSetTransmission",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetTransmissionReq" } } } },
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/driver/list": {
+      "get": {
+        "tags": ["Admin - Driver"],
+        "summary": "List all driver configs",
+        "operationId": "adminListDriverInfo",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/driver/names": {
+      "get": {
+        "tags": ["Admin - Driver"],
+        "summary": "List driver names",
+        "operationId": "adminListDriverNames",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiResponse" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "string" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/driver/info": {
+      "get": {
+        "tags": ["Admin - Driver"],
+        "summary": "Get driver info by name",
+        "operationId": "adminGetDriverInfo",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "driver", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/api/admin/index/build": {
+      "post": {
+        "tags": ["Admin - Index"],
+        "summary": "Build search index",
+        "operationId": "adminBuildIndex",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateIndexReq" } } } },
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/index/update": {
+      "post": {
+        "tags": ["Admin - Index"],
+        "summary": "Update search index",
+        "operationId": "adminUpdateIndex",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateIndexReq" } } } },
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/index/stop": {
+      "post": {
+        "tags": ["Admin - Index"],
+        "summary": "Stop index building",
+        "operationId": "adminStopIndex",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/index/clear": {
+      "post": {
+        "tags": ["Admin - Index"],
+        "summary": "Clear search index",
+        "operationId": "adminClearIndex",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/index/progress": {
+      "get": {
+        "tags": ["Admin - Index"],
+        "summary": "Get index build progress",
+        "operationId": "adminGetIndexProgress",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/scan/start": {
+      "post": {
+        "tags": ["Admin - Scan"],
+        "summary": "Start manual file scan",
+        "operationId": "adminStartScan",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/scan/stop": {
+      "post": {
+        "tags": ["Admin - Scan"],
+        "summary": "Stop manual scan",
+        "operationId": "adminStopScan",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/api/admin/scan/progress": {
+      "get": {
+        "tags": ["Admin - Scan"],
+        "summary": "Get scan progress",
+        "operationId": "adminGetScanProgress",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Success", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } } }
+      }
+    },
+    "/ping": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Health check",
+        "operationId": "ping",
+        "responses": {
+          "200": { "description": "Returns 'pong'", "content": { "text/plain": { "schema": { "type": "string" } } } }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Auth", "description": "Authentication and user profile" },
+    { "name": "Public", "description": "Public endpoints (no auth required)" },
+    { "name": "FileSystem", "description": "File and directory operations" },
+    { "name": "Archive", "description": "Archive file operations" },
+    { "name": "Sharing", "description": "File sharing management" },
+    { "name": "SSHKey", "description": "SSH public key management" },
+    { "name": "Admin - User", "description": "User management (admin only)" },
+    { "name": "Admin - Storage", "description": "Storage backend management (admin only)" },
+    { "name": "Admin - Meta", "description": "Path metadata/access control (admin only)" },
+    { "name": "Admin - Setting", "description": "System settings (admin only)" },
+    { "name": "Admin - Offline Download", "description": "Offline download tool configuration (admin only)" },
+    { "name": "Admin - Driver", "description": "Storage driver information (admin only)" },
+    { "name": "Admin - Index", "description": "Search index management (admin only)" },
+    { "name": "Admin - Scan", "description": "File scanning (admin only)" }
+  ]
+}
